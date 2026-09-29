@@ -5,6 +5,7 @@ import { TypeOrmModule, TypeOrmModuleOptions } from '@nestjs/typeorm';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { AuthModule } from './auth/auth.module';
+import { LoggerModule } from './common/logger/logger.module';
 @Module({
     imports: [
         ConfigModule.forRoot({ isGlobal: true }), // Load .env file and make it available globally
@@ -24,6 +25,7 @@ import { AuthModule } from './auth/auth.module';
                 }) as TypeOrmModuleOptions,
         }),
         AuthModule,
+        LoggerModule,
     ],
 
     controllers: [AppController],
