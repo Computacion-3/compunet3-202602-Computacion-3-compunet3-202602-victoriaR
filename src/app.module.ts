@@ -1,0 +1,43 @@
+import { Module } from '@nestjs/common';
+import { APP_INTERCEPTOR } from '@nestjs/core';
+import { ConfigModule, ConfigService } from '@nestjs/config';
+import { TypeOrmModule, TypeOrmModuleOptions } from '@nestjs/typeorm';
+
+import { AppController } from './app.controller';
+import { AppService } from './app.service';
+import { AuthModule } from './auth/auth.module';
+import { TraceabilityInterceptor } from './common/interceptors/traceability.interceptor';
+import { LoggerModule } from './common/logger/logger.module';
+
+@Module({
+    imports: [
+        ConfigModule.forRoot({ isGlobal: true }),
+        TypeOrmModule.forRootAsync({
+            imports: [ConfigModule],
+            inject: [ConfigService],
+            useFactory: (configService: ConfigService) =>
+                ({
+                    type: configService.get<string>('DB_TYPE') ?? 'postgres',
+                    host: configService.get<string>('DB_HOST') ?? 'localhost',
+                    port: configService.get<number>('POSTGRES_PORT') ?? 5432,
+                    username: configService.get<string>('POSTGRES_USER') ?? 'postgres',
+                    password: configService.get<string>('POSTGRES_PASSWORD') ?? 'postgres',
+                    database: configService.get<string>('POSTGRES_DB') ?? 'mydatabase',
+                    entities: [__dirname + '/**/*.entity{.ts,.js}'],
+                    synchronize: configService.get<boolean>('DB_SYNCHRONIZE') ?? true,
+                }) as TypeOrmModuleOptions,
+        }),
+        AuthModule,
+        LoggerModule,
+    ],
+
+    controllers: [AppController],
+    providers: [
+        AppService,
+        {
+            provide: APP_INTERCEPTOR,
+            useClass: TraceabilityInterceptor,
+        },
+    ],
+})
+export class AppModule {}
