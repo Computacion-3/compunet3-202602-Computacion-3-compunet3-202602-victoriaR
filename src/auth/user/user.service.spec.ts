@@ -4,6 +4,7 @@ import { ConfigService } from '@nestjs/config';
 import * as bcrypt from 'bcrypt';
 
 import { RoleNotFoundException, UserNotFoundException } from '../../common/exceptions';
+import { AppLogger } from '../../common/logger/logger.service';
 import { Role } from '../entities/role.entity';
 import { User } from '../entities/user.entity';
 import { RoleService } from '../role/role.service';
@@ -39,6 +40,7 @@ describe('UserService', () => {
                 { provide: getRepositoryToken(User), useValue: mockRepository },
                 { provide: RoleService, useValue: mockRoleService },
                 { provide: ConfigService, useValue: { get: jest.fn().mockReturnValue('10') } },
+                { provide: AppLogger, useValue: { log: jest.fn(), debug: jest.fn() } },
             ],
         }).compile();
 

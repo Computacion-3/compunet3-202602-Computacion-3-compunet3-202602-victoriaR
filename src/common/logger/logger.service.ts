@@ -1,23 +1,23 @@
 import * as fs from 'fs';
 import * as path from 'path';
+import { AsyncLocalStorage } from 'node:async_hooks';
 
 import { Injectable, LoggerService, OnModuleDestroy } from '@nestjs/common';
 
 @Injectable()
 export class AppLogger implements LoggerService, OnModuleDestroy {
     private logStream: fs.WriteStream;
+    private readonly traceStorage = new AsyncLocalStorage<string>();
 
     constructor() {
         const dateStamp = new Date().toISOString().split('T')[0];
         const logDir = path.join(process.cwd(), 'logs');
 
-        // Garantiza la existencia del directorio de almacenamiento
         if (!fs.existsSync(logDir)) {
             fs.mkdirSync(logDir, { recursive: true });
         }
 
         const logFile = path.join(logDir, `app-${dateStamp}.log`);
-        // Abre el stream en modo append ('a')
         this.logStream = fs.createWriteStream(logFile, { flags: 'a' });
     }
 
@@ -41,14 +41,22 @@ export class AppLogger implements LoggerService, OnModuleDestroy {
         this.write('VERBOSE', message);
     }
 
-    private write(level: string, message: string, trace?: string) {
-        const timestamp = new Date().toISOString();
-        const formattedLog = `[${timestamp}] [${level}] ${message}${trace ? '\n[Stack Trace]: ' + trace : ''}\n`;
+    runWithTrace<T>(correlationId: string, callback: () => T): T {
+        return this.traceStorage.run(correlationId, callback);
+    }
 
-        // Escritura persistente en disco
+    logWithTrace(correlationId: string, level: string, message: string): void {
+        this.write(level, message, undefined, correlationId);
+    }
+
+    private write(level: string, message: string, trace?: string, correlationId?: string) {
+        const timestamp = new Date().toISOString();
+        const activeCorrelationId = correlationId ?? this.traceStorage.getStore();
+        const correlationSuffix = activeCorrelationId ? ` [CorrelationID: ${activeCorrelationId}]` : '';
+        const formattedLog = `[${timestamp}] [${level}] ${message}${correlationSuffix}${trace ? '\n[Stack Trace]: ' + trace : ''}\n`;
+
         this.logStream.write(formattedLog);
 
-        // Salida formateada en consola
         console.info(formattedLog.trim());
     }
 
